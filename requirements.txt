@@ -1,6 +1,4 @@
-flask
-requests
-yfinance
+Flask
 pandas
-alpaca-trade-api==3.1.0
-
+yfinance
+alpaca-trade-api
