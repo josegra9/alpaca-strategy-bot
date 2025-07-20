@@ -7,43 +7,27 @@ def prepare_data(ticker: str, years_back: int = 7) -> pd.DataFrame:
         end_date = datetime.today()
         start_date = end_date - timedelta(days=years_back * 365)
 
-        print(f"\n📡 Downloading data for: {ticker}")
-        print(f"🗓️ Date range: {start_date.date()} to {end_date.date()}")
-
-        # Download historical stock data
         df = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=True)
-
-        # Reset index to make 'Date' a column
         df.reset_index(inplace=True)
 
-        # Validate data
         if df.empty or "Close" not in df.columns:
             raise ValueError(f"Downloaded data is empty or missing 'Close' column for {ticker}")
 
-        # Clean column names in case of MultiIndex
+        # Clean column names
         df.columns = [col[0] if isinstance(col, tuple) else col for col in df.columns]
 
-        # Ensure 'Close' is numeric
-        df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
-
-        # Calculate technical indicators
+        # Indicators
         df["MA30"] = df["Close"].rolling(30).mean()
         df["MA90"] = df["Close"].rolling(90).mean()
         df["30DayHigh"] = df["Close"].rolling(30).max()
         df["30DayLow"] = df["Close"].rolling(30).min()
+
+        # ✅ Fix: Assign single column
         df["DrawdownPct"] = ((df["Close"] - df["30DayHigh"]) / df["30DayHigh"]) * 100
 
-        # Remove rows with missing indicator data
         df.dropna(inplace=True)
-
-        # Sort data to ensure latest row is last
-        df.sort_values("Date", inplace=True)
-
-        # Show last row for verification
-        print("📈 Most recent data row:")
-        print(df.tail(1).to_dict(orient="records")[0])
 
         return df
 
     except Exception as e:
-        raise RuntimeError(f"Failed to fetch or prepare data for {ticker}: {e}")
+        raise RuntimeError(f"Failed to fetch or prepare data: {e}")
