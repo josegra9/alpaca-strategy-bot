@@ -2,4 +2,5 @@ flask
 requests
 yfinance
 pandas
-alpaca-trade-api
+alpaca-trade-api==3.1.0
+
