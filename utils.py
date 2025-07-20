@@ -1,11 +1,29 @@
 import yfinance as yf
 import pandas as pd
+from datetime import date, timedelta
 
-def prepare_data(ticker):
-    df = yf.download(ticker, period="6mo", auto_adjust=True, progress=False)
+def prepare_data(ticker, years_back=5):
+    end_date = date.today()
+    start_date = end_date - timedelta(days=365 * years_back)
+
+    df = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=True)
     df = df.reset_index()
-    df["MA30"] = df["Close"].rolling(30).mean()
-    df["MA90"] = df["Close"].rolling(90).mean()
-    df["30DayHigh"] = df["Close"].rolling(30).max()
-    df["DrawdownPct"] = (df["Close"] - df["30DayHigh"]) / df["30DayHigh"] * 100
-    return df.dropna()
+
+    # Ensure only expected columns are there
+    if 'Close' not in df.columns:
+        raise ValueError(f"'Close' column missing for {ticker}")
+
+    # Convert to float just in case
+    df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
+
+    # Compute indicators
+    df['MA30'] = df['Close'].rolling(30).mean()
+    df['MA90'] = df['Close'].rolling(90).mean()
+    df['30DayHigh'] = df['Close'].rolling(30).max()
+    df['30DayLow'] = df['Close'].rolling(30).min()
+    
+    # This line caused the crash if df['30DayHigh'] had NaNs
+    drawdown = (df['Close'] - df['30DayHigh']) / df['30DayHigh'] * 100
+    df['DrawdownPct'] = drawdown
+
+    return df
