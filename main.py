@@ -23,6 +23,13 @@ def run_strategy():
     except Exception as e:
         return jsonify({"error": f"Failed to fetch or prepare data: {str(e)}"}), 500
 
+    # Use most recent row for fallback signal info
+    latest_row = df.iloc[-1]
+    fallback_signal = {
+        "date": str(latest_row["Date"].date()),
+        "price": float(latest_row["Close"])
+    }
+
     trigger = False
     signal_info = {}
 
@@ -42,10 +49,16 @@ def run_strategy():
         else:
             return jsonify({"error": f"Unknown strategy: {strategy}"}), 400
 
+        # Fallback if strategy didn't return signal info
+        if not signal_info:
+            signal_info = fallback_signal
+
         if trigger:
             order = place_order(ticker, quantity)
             return jsonify({
                 "status": "BUY PLACED",
+                "strategy": strategy,
+                "ticker": ticker,
                 "signal": signal_info,
                 "order": order
             })
@@ -53,15 +66,18 @@ def run_strategy():
         return jsonify({
             "status": "No signal",
             "strategy": strategy,
-            "ticker": ticker
+            "ticker": ticker,
+            "signal": signal_info
         })
 
     except Exception as e:
         return jsonify({"error": f"Strategy evaluation failed: {str(e)}"}), 500
 
+
 @app.route("/", methods=["GET"])
 def health_check():
     return jsonify({"status": "Strategy API live"}), 200
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
