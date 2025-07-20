@@ -15,6 +15,14 @@ def run_strategy():
     quantity = int(data.get("quantity", 1))
     last_buy_date_str = data.get("last_buy_date")  # Optional
 
+    # 🧪 Debug incoming request
+    print("📥 Incoming request:")
+    print(f"  Ticker: {ticker}")
+    print(f"  Strategy: {strategy}")
+    print(f"  Quantity: {quantity}")
+    if last_buy_date_str:
+        print(f"  Last Buy Date: {last_buy_date_str}")
+
     if not ticker or not strategy:
         return jsonify({"error": "Missing required fields: ticker and strategy"}), 400
 
@@ -22,6 +30,10 @@ def run_strategy():
         df = prepare_data(ticker)
     except Exception as e:
         return jsonify({"error": f"Failed to fetch or prepare data: {str(e)}"}), 500
+
+    # 🧪 Log latest row pulled
+    print(f"📊 Latest data row for {ticker}:")
+    print(df.tail(1).to_dict(orient="records")[0])
 
     # Use most recent row for fallback signal info
     latest_row = df.iloc[-1]
@@ -49,12 +61,17 @@ def run_strategy():
         else:
             return jsonify({"error": f"Unknown strategy: {strategy}"}), 400
 
-        # Fallback if strategy didn't return signal info
         if not signal_info:
             signal_info = fallback_signal
 
+        # 🧪 Print signal info
+        print("📈 Strategy signal evaluation:")
+        print(f"  Trigger: {trigger}")
+        print(f"  Signal Info: {signal_info}")
+
         if trigger:
             order = place_order(ticker, quantity)
+            print("✅ Order placed:", order)
             return jsonify({
                 "status": "BUY PLACED",
                 "strategy": strategy,
@@ -73,11 +90,9 @@ def run_strategy():
     except Exception as e:
         return jsonify({"error": f"Strategy evaluation failed: {str(e)}"}), 500
 
-
 @app.route("/", methods=["GET"])
 def health_check():
     return jsonify({"status": "Strategy API live"}), 200
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
