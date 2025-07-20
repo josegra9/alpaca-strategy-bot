@@ -7,6 +7,9 @@ def prepare_data(ticker: str, years_back: int = 7) -> pd.DataFrame:
         end_date = datetime.today()
         start_date = end_date - timedelta(days=years_back * 365)
 
+        print(f"\n📡 Downloading data for: {ticker}")
+        print(f"🗓️ Date range: {start_date.date()} to {end_date.date()}")
+
         # Download historical stock data
         df = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=True)
 
@@ -20,6 +23,9 @@ def prepare_data(ticker: str, years_back: int = 7) -> pd.DataFrame:
         # Clean column names in case of MultiIndex
         df.columns = [col[0] if isinstance(col, tuple) else col for col in df.columns]
 
+        # Ensure 'Close' is numeric
+        df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
+
         # Calculate technical indicators
         df["MA30"] = df["Close"].rolling(30).mean()
         df["MA90"] = df["Close"].rolling(90).mean()
@@ -32,6 +38,10 @@ def prepare_data(ticker: str, years_back: int = 7) -> pd.DataFrame:
 
         # Sort data to ensure latest row is last
         df.sort_values("Date", inplace=True)
+
+        # Show last row for verification
+        print("📈 Most recent data row:")
+        print(df.tail(1).to_dict(orient="records")[0])
 
         return df
 
