@@ -1,4 +1,4 @@
-Flask
+flask
+requests
+yfinance
 pandas
-yfinance=0.2.36
-alpaca-trade-api
