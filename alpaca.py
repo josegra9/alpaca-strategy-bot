@@ -1,24 +1,30 @@
 import os
-import requests
-import uuid
+import alpaca_trade_api as tradeapi
 
+# 🔐 Alpaca API credentials from environment variables
 ALPACA_API_KEY = os.getenv("ALPACA_API_KEY")
-ALPACA_SECRET = os.getenv("ALPACA_SECRET")
-ALPACA_BASE_URL = "https://api.alpaca.markets"
+ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY")
+ALPACA_BASE_URL = os.getenv("ALPACA_BASE_URL", "https://paper-api.alpaca.markets")
 
-def place_order(symbol, qty):
-    url = f"{ALPACA_BASE_URL}/v2/orders"
-    headers = {
-        "APCA-API-KEY-ID": ALPACA_API_KEY,
-        "APCA-API-SECRET-KEY": ALPACA_SECRET,
-    }
-    order = {
-        "symbol": symbol,
-        "qty": qty,
-        "side": "buy",
-        "type": "market",
-        "time_in_force": "gtc",
-        "client_order_id": str(uuid.uuid4())[:16]
-    }
-    response = requests.post(url, json=order, headers=headers)
-    return response.json()
+# 📡 Initialize Alpaca client
+api = tradeapi.REST(ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_BASE_URL, api_version="v2")
+
+def place_order(symbol: str, qty: int):
+    """
+    Places a market buy order for the given stock symbol and quantity.
+    """
+    order = api.submit_order(
+        symbol=symbol,
+        qty=qty,
+        side="buy",
+        type="market",
+        time_in_force="gtc"
+    )
+    return order._raw  # Return raw dictionary for easier JSON response
+
+def get_stock_price(symbol: str) -> float:
+    """
+    Retrieves the latest trade price for the given stock symbol.
+    """
+    latest_trade = api.get_latest_trade(symbol)
+    return float(latest_trade.price)
