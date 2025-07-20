@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from strategies import drawdown20, ma_crossover, time_dip_combo
-from alpaca import place_order
+from alpaca import place_order, get_stock_price
 from utils import prepare_data
 from datetime import datetime
 import os
@@ -31,15 +31,16 @@ def run_strategy():
     except Exception as e:
         return jsonify({"error": f"Failed to fetch or prepare data: {str(e)}"}), 500
 
-    # 🧪 Log latest row pulled
-    print(f"📊 Latest data row for {ticker}:")
-    print(df.tail(1).to_dict(orient="records")[0])
+    # Pull live price from Alpaca
+    try:
+        live_price = get_stock_price(ticker)
+    except Exception as e:
+        return jsonify({"error": f"Failed to get price from Alpaca: {str(e)}"}), 500
 
-    # Use most recent row for fallback signal info
     latest_row = df.iloc[-1]
     fallback_signal = {
         "date": str(latest_row["Date"].date()),
-        "price": float(latest_row["Close"])
+        "price": float(live_price)
     }
 
     trigger = False
@@ -48,23 +49,22 @@ def run_strategy():
     try:
         if strategy == "Drawdown20":
             trigger, signal_info = drawdown20.should_buy(df)
-
         elif strategy == "MA_Crossover":
             trigger, signal_info = ma_crossover.should_buy(df)
-
         elif strategy == "TimeDipCombo":
             if not last_buy_date_str:
                 return jsonify({"error": "last_buy_date is required for TimeDipCombo"}), 400
             last_buy_date = datetime.strptime(last_buy_date_str, "%Y-%m-%d")
             trigger, signal_info = time_dip_combo.should_buy(df, last_buy_date)
-
         else:
             return jsonify({"error": f"Unknown strategy: {strategy}"}), 400
 
+        # Fallback to Alpaca price if strategy doesn't return price
         if not signal_info:
             signal_info = fallback_signal
+        elif "price" not in signal_info:
+            signal_info["price"] = float(live_price)
 
-        # 🧪 Print signal info
         print("📈 Strategy signal evaluation:")
         print(f"  Trigger: {trigger}")
         print(f"  Signal Info: {signal_info}")
