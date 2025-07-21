@@ -15,13 +15,28 @@ data_client = StockHistoricalDataClient(API_KEY, SECRET)
 # Trading
 trading_client = TradingClient(API_KEY, SECRET, paper=True)
 
+import os
+import requests
+
 def get_stock_price(symbol: str) -> float:
-    req = StockLatestQuoteRequest(symbol_or_symbols=[symbol])
-    latest = data_client.get_stock_latest_quote(req)
-    quote = latest.get(symbol)
-    if quote is None or quote.ask_price is None:
-        raise RuntimeError(f"No latest quote for {symbol}")
-    return float(quote.ask_price)
+    try:
+        base_url = "https://data.alpaca.markets/v2/stocks"
+        endpoint = f"{base_url}/{symbol}/quotes/latest"
+        headers = {
+            "APCA-API-KEY-ID": os.getenv("ALPACA_API_KEY"),
+            "APCA-API-SECRET-KEY": os.getenv("ALPACA_SECRET")
+        }
+
+        response = requests.get(endpoint, headers=headers)
+        response.raise_for_status()
+
+        data = response.json()
+        price = data["quote"]["ap"]
+        return float(price)
+
+    except Exception as e:
+        raise RuntimeError(f"Failed to fetch price from Alpaca: {e}")
+
 
 def place_order(symbol: str, qty: float):
     req = MarketOrderRequest(
