@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from strategies import drawdown20, ma_crossover, time_dip_combo
-from alpaca import place_order
+from alpaca import place_order, get_stock_price
 from utils import prepare_data
 from datetime import datetime
 import os
@@ -18,10 +18,12 @@ def run_strategy():
     if not ticker or not strategy:
         return jsonify({"error": "Missing required fields: ticker and strategy"}), 400
 
-    try:
-        df = prepare_data(ticker)
-    except Exception as e:
-        return jsonify({"error": f"Failed to fetch or prepare data: {str(e)}"}), 500
+try:
+    df = prepare_data(ticker)
+    live_price = get_stock_price(ticker)
+except Exception as e:
+    return jsonify({"error": f"Failed to fetch or prepare data: {str(e)}"}), 500
+
 
     trigger = False
     signal_info = {}
