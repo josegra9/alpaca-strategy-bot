@@ -20,9 +20,13 @@ def run_strategy():
 
     try:
         df = prepare_data(ticker)
-        live_price = get_stock_price(ticker)
     except Exception as e:
         return jsonify({"error": f"Failed to fetch or prepare data: {str(e)}"}), 500
+
+    try:
+        live_price = get_stock_price(ticker)
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch live price: {str(e)}"}), 500
 
     trigger = False
     signal_info = {}
@@ -43,27 +47,20 @@ def run_strategy():
         else:
             return jsonify({"error": f"Unknown strategy: {strategy}"}), 400
 
-        # Use fallback live price if strategy didn't provide one
-        if not signal_info:
-            signal_info = {"price": live_price}
-        elif "price" not in signal_info:
-            signal_info["price"] = live_price
-
         if trigger:
             order = place_order(ticker, quantity)
             return jsonify({
                 "status": "BUY PLACED",
-                "strategy": strategy,
-                "ticker": ticker,
                 "signal": signal_info,
-                "order": order
+                "order": order,
+                "live_price": live_price
             })
 
         return jsonify({
             "status": "No signal",
             "strategy": strategy,
             "ticker": ticker,
-            "signal": signal_info
+            "live_price": live_price
         })
 
     except Exception as e:
